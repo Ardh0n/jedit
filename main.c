@@ -11,35 +11,47 @@ enum mode {
 
 gapbuffer gb;
 enum mode mode;
-char *file;
+char file[256];
 
-void input(){
-    char c[128];
+
+void input(char *buf, char *text, size_t n){
     int ch;
     int i = 0;
     int y = stdscr->_maxy;
     move(y, 0);
-    addch(':');
-    while(i < 128){
+    for(char *p = text; *p!=0;p++){
+        addch(*p);
+    }
+    while(i < n){
         ch = getch();
         switch(ch){
+            case 27:
+                memset(buf, 0, n);
+                return;
             case '\n':
-                i = 128;
+                i = n;
                 break;
             case KEY_BACKSPACE:
-                if (i > 0) c[i - 1] = 0;
+                if (i > 0) buf[i - 1] = 0;
                 i--;
+                addch(KEY_BACKSPACE);
                 break;
             default:
                 if (ch >= ' ' && ch <= '~'){
-                    c[i] = ch;
-                    addch(c[i]);
+                    buf [i] = ch;
+                    addch(buf[i]);
                     i++;
                 }
         }
         refresh();
     }
+}
+void textCommand(){
+    char c[128];
+    input(c,":", 128);
     if (strcmp(c, "w") == 0){
+        if(*file == 0) input(file, "filename:", 256);
+        if(*file == 0) return;
         saveFile(&gb, file);
     } else if (strcmp(c, "q") == 0){
         clear();
@@ -47,6 +59,8 @@ void input(){
         free(gb.buffer);
         exit(0);
     } else if (strcmp(c, "wq") == 0){
+        if(*file == 0) input(file, "filename:", 256);
+        if(*file == 0) return;
         saveFile(&gb, file);
         clear();
         endwin();
@@ -124,7 +138,7 @@ void command(int c){
             gb_cursor(&gb, gb_search_right(&gb, '\n'));
             break;
         case ':':
-            input();
+            textCommand();
             break;
     }
 }
@@ -165,7 +179,7 @@ int main(int argc, char **argv){
         gb_init_buffer(&gb, GB_DEFAULT_SIZE);
     } else {
         int e = loadFile(&gb, argv[1]);
-        file = argv[1];
+        strcpy(file, argv[1]);
         if (e != 0){
             printf("Error loading file\n");
             exit(1);
